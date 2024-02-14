@@ -12,32 +12,34 @@
  * along with Interacto.  If not, see <https://www.gnu.org/licenses/>.
  */
 
- mod anoncmd {
-    use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
-    use crate::{anoncmd::AnonCmd, command::{CustomCmd, Cmd}};
+use crate::command::Command;
+use crate::{
+    anoncmd::AnonCmd,
+    command::{Cmd, CustomCmd},
+};
 
-    #[test]
-    fn can_do_ok_cmd() {
-        assert_eq!(AnonCmd::new(|| {}).as_command().can_execute(), true);
-    }
+#[test]
+fn can_do_ok_cmd() {
+    assert_eq!(AnonCmd::new(|| {}).as_command().can_execute(), true);
+}
 
-    #[test]
-    fn execute() {
-        let ok = Arc::new(Mutex::new(false));
-        let mut cmd = Cmd::new(AnonCmd::new(|| {
-            let mut data = ok.lock().unwrap();
-            *data = true;
-        }));
-        cmd.execute();
-        assert_eq!(*ok.lock().unwrap(), true);
-    }
+#[test]
+fn execute() {
+    let ok = Arc::new(Mutex::new(false));
+    let mut cmd = Cmd::new(AnonCmd::new(|| {
+        let mut data = ok.lock().unwrap();
+        *data = true;
+    }));
+    cmd.execute();
+    assert_eq!(*ok.lock().unwrap(), true);
+}
 
-    #[test]
-    fn had_effect() {
-        let mut cmd = Cmd::new(AnonCmd::new(|| {}));
-        cmd.execute();
-        cmd.done();
-        assert_eq!(cmd.had_effect(), true);
-    }
- }
+#[test]
+fn had_effect() {
+    let mut cmd = Cmd::new(AnonCmd::new(|| {}));
+    cmd.execute();
+    cmd.done();
+    assert_eq!(cmd.had_effect(), true);
+}

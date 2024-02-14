@@ -21,6 +21,9 @@ pub mod interaction;
 pub mod fsm;
 pub mod dom;
 pub mod r#impl;
+pub mod undohistory;
+pub mod undo;
+pub mod linearhistory;
 
 #[cfg(test)]
 mod test;
