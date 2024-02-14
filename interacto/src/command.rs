@@ -31,39 +31,81 @@ pub enum CmdStatus {
     Flushed,
 }
 
+pub trait Command {
+    fn get_status(&self) -> CmdStatus;
+
+    fn set_status(&mut self, new_status: CmdStatus);
+
+    fn execute(&mut self) -> bool;
+
+    /**
+     * Actions may need to create a memento before their first execution.
+     * This is the goal of the operation that should be overridden.
+     * This operator is called a single time before the first execution of the command.
+     */
+    fn create_memento(&mut self);
+
+    fn can_execute(&self);
+
+    /**
+     * This method contains the statements to execute the command.
+     * This method is automatically called by 'execute' and must not be called explicitly.
+     */
+    fn execution(&mut self);
+
+    /**
+     * Marks the command as "done" and sends it to the command registry.
+     */
+    fn done(&mut self);
+
+    /**
+     * Flushes the UI command.
+     * The command must not be used after that.
+     */
+    fn flush(&mut self);
+
+    fn had_effect(&self);
+
+    fn is_done(&self) -> bool;
+
+    fn cancel(&mut self);
+}
+
 /**
  * A command is produced and executed in reaction of a user interaction.
  * It follows the command design pattern.
  * It contains statements to execute to perform the command.
  * The interface Undoable can be used to add undo/redo features to a command.
  */
-pub struct Command<T: CustomCmd> {
+pub struct Cmd<T: CustomCmd> {
     status: CmdStatus,
-    pub child: T
+    pub child: T,
 }
 
-impl<T: CustomCmd> Command<T> {
+impl<T: CustomCmd> Cmd<T> {
     pub fn new(child_cmd: T) -> Self {
         Self {
             status: CmdStatus::Created,
-            child: child_cmd
+            child: child_cmd,
         }
     }
 }
 
-impl<T: CustomCmd> Command<T> {
-    pub fn get_status(&self) -> CmdStatus {
+impl<T: CustomCmd> Command for Cmd<T> {
+    fn get_status(&self) -> CmdStatus {
         self.status
     }
 
-    pub fn set_status(&mut self, new_status: CmdStatus) {
+    fn set_status(&mut self, new_status: CmdStatus) {
         self.status = new_status
     }
 
-    pub fn execute(&mut self) -> bool {
+    fn execute(&mut self) -> bool {
         let ok: bool;
         let status = self.get_status();
-        if (status == CmdStatus::Created || status == CmdStatus::Executed) && self.child.can_execute() {
+        if (status == CmdStatus::Created || status == CmdStatus::Executed)
+            && self.child.can_execute()
+        {
             if status == CmdStatus::Created {
                 self.child.create_memento();
             }
@@ -98,11 +140,11 @@ impl<T: CustomCmd> Command<T> {
      * This is the goal of the operation that should be overridden.
      * This operator is called a single time before the first execution of the command.
      */
-    pub fn create_memento(&mut self) {
+    fn create_memento(&mut self) {
         self.child.create_memento()
     }
 
-    pub fn can_execute(&self) -> bool {
+    fn can_execute(&self) -> bool {
         self.child.can_execute()
     }
 
@@ -110,14 +152,14 @@ impl<T: CustomCmd> Command<T> {
      * This method contains the statements to execute the command.
      * This method is automatically called by 'execute' and must not be called explicitly.
      */
-    pub fn execution(&mut self) {
+    fn execution(&mut self) {
         self.child.execution()
     }
 
     /**
      * Marks the command as "done" and sends it to the command registry.
      */
-    pub fn done(&mut self) {
+    fn done(&mut self) {
         if self.get_status() == CmdStatus::Created || self.get_status() == CmdStatus::Executed {
             self.set_status(CmdStatus::Done);
         }
@@ -127,19 +169,19 @@ impl<T: CustomCmd> Command<T> {
      * Flushes the UI command.
      * The command must not be used after that.
      */
-    pub fn flush(&mut self) {
+    fn flush(&mut self) {
         self.set_status(CmdStatus::Flushed)
     }
 
-    pub fn had_effect(&self) -> bool {
+    fn had_effect(&self) -> bool {
         self.is_done()
     }
 
-    pub fn is_done(&self) -> bool {
+    fn is_done(&self) -> bool {
         self.get_status() == CmdStatus::Done
     }
 
-    pub fn cancel(&mut self) {
+    fn cancel(&mut self) {
         self.set_status(CmdStatus::Cancelled)
     }
 }
@@ -150,8 +192,7 @@ pub trait CustomCmd: Sized {
      * This is the goal of the operation that should be overridden.
      * This operator is called a single time before the first execution of the command.
      */
-    fn create_memento(&mut self) {
-    }
+    fn create_memento(&mut self) {}
 
     fn can_execute(&self) -> bool {
         true
@@ -163,9 +204,12 @@ pub trait CustomCmd: Sized {
      */
     fn execution(&mut self);
 
-    fn as_command(self) -> Command<Self> {
-        Command::new(self)
+    fn as_command(self) -> Cmd<Self> {
+        Cmd::new(self)
     }
 }
 
-pub trait UndoableCommand<'a>: CustomCmd + Undoable {}
+pub trait UndoableCmd<'a>: CustomCmd + Undoable {}
+pub trait UndoableCommand<'a>: Command + Undoable {}
+
+impl<'a, T: UndoableCmd<'a>> UndoableCommand<'a> for Cmd<T> {}

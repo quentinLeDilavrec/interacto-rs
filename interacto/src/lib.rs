@@ -14,6 +14,13 @@
 pub mod command;
 pub mod undoble;
 pub mod anoncmd;
+pub mod binder;
+pub mod binding;
+pub mod checker;
+pub mod interaction;
+pub mod fsm;
+pub mod dom;
+pub mod r#impl;
 
 #[cfg(test)]
 mod test;
